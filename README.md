@@ -2,7 +2,7 @@
 
 Jason-Azure 的维护分支：fork。
 
-- [中文直播工具与使用说明](guanxiang-live/README.md)：中文星官、二十八宿、三垣快捷切换，独立 OBS 播出页面。
+- [中文直播工具与使用说明](guanxiang-live/README.md)：v2 重构——观象品牌播出画面（中文星名、水墨地景、横竖屏）、所见即所播的控制台、平滑运镜与时间快进。
 - [定制 skyculture 数据](chinese_guanxiang/)：保留原始星官连线，补齐中文原名与星名编号，增加三垣总名注记。
 - [上游 Chinese 数据](chinese/)：保留作为出处和后续更新依据。
 

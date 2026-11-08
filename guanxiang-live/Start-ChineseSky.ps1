@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidateRange(1024, 65535)] [int] $Port = 8765,
     [switch] $NoBrowser
 )
@@ -7,7 +7,14 @@ $gxBase = "http://127.0.0.1:$Port"
 $gxReady = $false
 try {
     $gxHealth = Invoke-RestMethod -Uri "$gxBase/api/health" -TimeoutSec 2
-    $gxReady = $gxHealth.app -eq 'guanxiang-chinese-sky'
+    if ($gxHealth.app -eq 'guanxiang-chinese-sky') {
+        if ($gxHealth.version -ge 2) { $gxReady = $true }
+        else {
+            # v0.1 still running in the background holds the port; replace it.
+            Stop-Process -Id $gxHealth.pid -ErrorAction SilentlyContinue
+            Start-Sleep -Milliseconds 600
+        }
+    }
 } catch {}
 if (-not $gxReady) {
     $gxPythonChoices = @(
@@ -26,7 +33,7 @@ if (-not $gxReady) {
         Start-Sleep -Milliseconds 250
         try {
             $gxHealth = Invoke-RestMethod -Uri "$gxBase/api/health" -TimeoutSec 1
-            if ($gxHealth.app -eq 'guanxiang-chinese-sky') { $gxReady = $true; break }
+            if ($gxHealth.app -eq 'guanxiang-chinese-sky' -and $gxHealth.version -ge 2) { $gxReady = $true; break }
         } catch {}
         if ($gxProcess.HasExited) { break }
     }

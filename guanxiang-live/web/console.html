@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>观象 · 星空直播控制台</title>
+  <link rel="stylesheet" href="/web/console.css">
+  <script src="/web/console.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <div class="brand"><img src="/web/brand/seal.png" alt=""><div><b>观象</b><span>星空直播 · 控制台</span></div></div>
+    <div class="onair">
+      <span id="program-status" class="status">OBS 播出画面未连接</span>
+      <label class="switch" title="开：在预览里拖动、缩放，播出画面同步跟随；关：先在预览里准备，按“切出”再送出"><input type="checkbox" id="follow"><i></i>跟随预览</label>
+      <button id="take" class="primary" title="把预览取景送到播出画面（Enter）">切出 ⏎</button>
+      <a class="ghost" href="/program" target="_blank" rel="noopener" title="在新窗口看播出画面；OBS 浏览器来源填同一地址">播出画面 ↗</a>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="frame" id="frame">
+      <iframe id="preview" src="/sky/?role=preview" title="预览"></iframe>
+      <span class="tag">预览 · 拖动、滚轮取景</span>
+    </div>
+    <p id="status" class="toast" role="status"></p>
+  </main>
+
+  <footer class="transport">
+    <div class="now">
+      <div id="sky-clock" class="clock">—</div>
+      <div id="sky-meta" class="meta">北京时间</div>
+    </div>
+    <div class="deck">
+      <button data-step="-3600" title="后退 1 小时">−1 时</button>
+      <button data-step="-600" title="后退 10 分钟">−10 分</button>
+      <button id="pause" class="round" title="定格 / 继续（空格）">❚❚</button>
+      <div class="speeds" id="speeds">
+        <button data-rate="1">×1</button><button data-rate="60">×60</button><button data-rate="600">×600</button><button data-rate="3600">×3600</button>
+      </div>
+      <button data-step="600" title="前进 10 分钟">+10 分</button>
+      <button data-step="3600" title="前进 1 小时">+1 时</button>
+      <button id="live" class="live" title="回到此刻（T）">此刻</button>
+    </div>
+    <div class="jump">
+      <input id="demo-time" type="datetime-local" step="60" title="北京时间">
+      <button id="time-apply">定格到此时</button>
+      <button id="tonight">今晚 20:00</button>
+    </div>
+  </footer>
+
+  <aside class="rail">
+    <section class="card">
+      <h2>镜头</h2>
+      <div class="tiles five" id="directions">
+        <button data-az="90"><b>东</b></button><button data-az="180"><b>南</b></button><button data-az="270"><b>西</b></button><button data-az="0"><b>北</b></button><button data-zenith><b>顶</b></button>
+      </div>
+      <div class="tiles" id="groups"></div>
+      <div class="search">
+        <input id="search" list="asterism-names" placeholder="星官名，如 心宿、织女、天津" autocomplete="off">
+        <button id="find">定位</button>
+      </div>
+      <datalist id="asterism-names"></datalist>
+      <label class="check"><input type="checkbox" id="auto-title" checked>标题随镜头</label>
+    </section>
+
+    <section class="card event">
+      <h2>预设</h2>
+      <button id="event-pleiades" class="event-btn"><b>月过昴宿</b><span>2026 年 11 月 24 日 18:30 · 洛阳 · 满月在东偏北、高约 18°，正遮着昴宿四</span></button>
+      <p class="hint">洛阳约 17:20—18:35，月亮先后遮住昴宿一、二、四，昴宿六擦边而过。载入后时间定格；按 −1 时 从头看，×600 快进约一分钟走过星团。</p>
+    </section>
+
+    <section class="card">
+      <h2>地点</h2>
+      <div class="chips" id="places"></div>
+      <details>
+        <summary>自定地点</summary>
+        <div class="fields">
+          <label>名称<input id="place"></label>
+          <label>海拔 m<input id="elev" type="number" min="-500" max="9000"></label>
+          <label>纬度<input id="lat" type="number" step="0.01" min="-90" max="90"></label>
+          <label>经度<input id="lng" type="number" step="0.01" min="-180" max="180"></label>
+        </div>
+        <button id="place-apply">应用地点</button>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>画面</h2>
+      <div class="toggles">
+        <label class="switch"><input type="checkbox" data-view="lines"><i></i>星官连线</label>
+        <label class="switch"><input type="checkbox" data-view="labels"><i></i>星官名</label>
+        <label class="switch"><input type="checkbox" data-view="stars"><i></i>亮星名</label>
+        <label class="switch"><input type="checkbox" data-view="classic"><i></i>五星古名</label>
+        <label class="switch"><input type="checkbox" data-view="atmosphere"><i></i>大气</label>
+        <label class="switch"><input type="checkbox" data-view="grid"><i></i>赤道网格</label>
+        <label class="switch"><input type="checkbox" data-view="hud"><i></i>标题字幕</label>
+      </div>
+      <div class="segment" id="ground">
+        <span>地景</span><button data-ground="ink">山水</button><button data-ground="field">原野</button><button data-ground="none">全天球</button>
+      </div>
+      <div class="segment" id="aspect">
+        <span>画幅</span><button data-aspect="16:9">横屏 16:9</button><button data-aspect="9:16">竖屏 9:16</button>
+      </div>
+      <label class="field">标题<input id="title" maxlength="40"></label>
+      <label class="field">字幕<input id="caption" maxlength="60" placeholder="可留空，如：满月从昴宿前走过"></label>
+    </section>
+
+    <details class="card help">
+      <summary>快捷键与 OBS</summary>
+      <p><kbd>1</kbd> 紫微垣 <kbd>2</kbd> 太微垣 <kbd>3</kbd> 天市垣 <kbd>4</kbd> 二十八宿 <kbd>5</kbd> 北斗 <kbd>0</kbd> 全天<br>
+        <kbd>P</kbd> 昴宿 <kbd>M</kbd> 月亮 <kbd>T</kbd> 此刻 <kbd>空格</kbd> 定格／继续 <kbd>F</kbd> 跟随 <kbd>Enter</kbd> 切出</p>
+      <p>OBS 添加“浏览器”来源，地址 <code id="program-url">http://127.0.0.1:8765/program</code>；横屏 1920×1080，竖屏 1080×1920，30 fps。
+        关闭“不可见时关闭源”和“场景激活时刷新浏览器”。开播前先打开本页预热一次，星图资源会缓存在本机。</p>
+    </details>
+    <details class="card help">
+      <summary>数据与出处</summary>
+      <p id="data-info"></p>
+      <p>星图由 Stellarium Web 官方引擎计算与渲染（需联网）；星官名称与连线来自 Stellarium 中国星空文化（CC BY-SA，原作者 Karrie Berglund、Sun Shuwei 与 Stellarium team）。
+        三垣总名是显示注记，落在各垣帝座；二十八宿显示的是星官连线，不是宿度分界。</p>
+      <a id="source-link" target="_blank" rel="noopener">数据源（固定版本）↗</a>
+    </details>
+  </aside>
+</body>
+</html>

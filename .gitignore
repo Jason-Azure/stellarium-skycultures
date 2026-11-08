@@ -3,3 +3,6 @@ stellarium-skycultures.*
 
 __pycache__/
 *.py[cod]
+
+# guanxiang-live: local cache of official Stellarium Web resources
+guanxiang-live/.cache/
