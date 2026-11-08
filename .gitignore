@@ -1,2 +1,5 @@
 __pycache__
 stellarium-skycultures.*
+
+__pycache__/
+*.py[cod]
