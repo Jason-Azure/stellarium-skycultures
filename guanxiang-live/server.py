@@ -22,7 +22,8 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
-CACHE = ROOT / ".cache"
+_cache_base = os.environ.get("LOCALAPPDATA") or os.environ.get("XDG_CACHE_HOME")
+CACHE = (Path(_cache_base) if _cache_base else Path.home() / ".cache") / "guanxiang-chinese-sky" / "stellarium"
 SOURCE = json.loads((ROOT / "data" / "index.json").read_text(encoding="utf-8"))
 REVISION = "2d80ce70984c14bba7da2d31a0f9b27e292861c9"
 SOURCE_URL = f"https://github.com/Stellarium/stellarium-skycultures/tree/{REVISION}/chinese"
@@ -270,7 +271,7 @@ HUB = Hub()
 
 
 class Vendor:
-    """Fetch official Stellarium resources once; static files persist in .cache/."""
+    """Fetch official resources once; persist them in the user's application cache."""
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -398,7 +399,8 @@ class Handler(SimpleHTTPRequestHandler):
             if route.startswith(f"/{key}/"):
                 return self.vendor(key, route[len(key) + 2:])
         if route == "/api/health":
-            return self.send_json({"app": "guanxiang-chinese-sky", "version": 2, "pid": os.getpid(), "revision": REVISION})
+            return self.send_json({"app": "guanxiang-chinese-sky", "version": 2, "build": "2.0.1",
+                                   "pid": os.getpid(), "revision": REVISION, "root": str(ROOT), "cache": str(CACHE)})
         if route == "/api/state":
             return self.send_json(HUB.snapshot())
         if route == "/api/events":

@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  var state = null, catalog = null, program = null, autoGround = false;
+  var state = null, liveState = null, draft = null, catalog = null, program = null, autoGround = false;
   var $ = function (id) { return document.getElementById(id); };
   var preview = $('preview');
   var PLACES = [
@@ -30,10 +30,42 @@
     clearTimeout(sayTimer);
     sayTimer = setTimeout(function () { el.classList.remove('show'); }, error ? 6000 : 2600);
   }
-  function patch(value) {
+  function merge(base, value) {
+    var out = Object.assign({}, base || {}, value || {});
+    if (value && value.view) out.view = Object.assign({}, base && base.view || {}, value.view);
+    return out;
+  }
+  function receive(value) {
+    if (!liveState || value.version >= liveState.version) liveState = value;
+    if (liveState.follow) draft = null;
+    state = draft && !liveState.follow ? merge(liveState, draft) : liveState;
+    render();
+  }
+  function patch(value, force) {
+    if (liveState && !liveState.follow && !('follow' in value) && !force) {
+      if (!sky() || !sky().prepare) {
+        say('预览还没准备好', true);
+        return Promise.resolve(state);
+      }
+      draft = merge(draft, value);
+      state = merge(liveState, draft);
+      sky().prepare(value);
+      render();
+      return Promise.resolve(state);
+    }
+    if (value.follow === true && liveState && !liveState.follow && sky() && sky().takeState) {
+      value = merge(sky().takeState(), value);
+    }
     return fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) })
       .then(function (r) { return r.json().then(function (body) { if (!r.ok) throw new Error(body.error || '设置未生效'); return body; }); })
-      .then(function (body) { state = body; render(); return body; })
+      .then(function (body) {
+        if (force || body.follow) {
+          draft = null;
+          if (sky() && sky().clearPreview) sky().clearPreview(body);
+        }
+        receive(body);
+        return body;
+      })
       .catch(function (error) { say(error.message, true); });
   }
   function sky() { return preview.contentWindow && preview.contentWindow.gx; }
@@ -61,8 +93,7 @@
     camera.motion = camera.motion || 'glide';
     camera.source = 'console';
     var body = Object.assign({}, extra || {});
-    if (state.follow) body.camera = camera;
-    else if (sky() && sky().go) sky().go(camera);
+    body.camera = camera;
     return patch(body);
   }
   function lookToward(az, alt, name) {
@@ -292,9 +323,11 @@
   $('follow').addEventListener('change', function () { patch({ follow: $('follow').checked }); });
   $('take').addEventListener('click', take);
   function take() {
-    var cam = sky() && sky().take && sky().take();
-    if (!cam) return say('预览还没准备好', true);
-    patch({ camera: Object.assign(cam, { motion: 'glide', source: 'console' }) }).then(function () { say('已切出到播出画面'); });
+    var prepared = sky() && sky().takeState && sky().takeState();
+    if (!prepared || !prepared.camera) return say('预览还没准备好', true);
+    var cue = merge(draft, prepared);
+    cue.camera = Object.assign({}, cue.camera, { motion: 'glide', source: 'console' });
+    patch(cue, true).then(function () { say('已切出到播出画面'); });
   }
 
   function hotkey(key) {
@@ -324,7 +357,7 @@
     catalog = data;
     build();
     var source = new EventSource('/api/events');
-    source.onmessage = function (e) { state = JSON.parse(e.data); render(); };
+    source.onmessage = function (e) { receive(JSON.parse(e.data)); };
     source.onerror = function () { say('本地服务未连接：请重新运行 Start-ChineseSky', true); };
     source.onopen = function () { say('已连接本地服务'); };
     $('demo-time').value = beijingParts(Date.now()).input.slice(0, 10) + 'T20:00';

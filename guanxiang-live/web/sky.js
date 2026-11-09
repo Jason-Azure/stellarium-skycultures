@@ -8,7 +8,7 @@
   var D = Math.PI / 180;
   var ROLE = new URLSearchParams(location.search).get('role') === 'preview' ? 'preview' : 'program';
   var ID = ROLE + '-' + Math.random().toString(36).slice(2, 9);
-  var engine = null, state = null, catalog = null, labels = null;
+  var engine = null, state = null, broadcastState = null, previewPatch = null, previewSerial = 0, catalog = null, labels = null;
   var cultures = new Set(), maintained = 0, maintainedVersion = -1;
   var cam = { serial: -1, pending: null, tries: 0, first: true };
   var clock = { key: '', holdUntil: 0 };
@@ -60,12 +60,23 @@
   }
 
   // ---------------------------------------------------------------- state
+  function merge(base, patch) {
+    var out = Object.assign({}, base || {}, patch || {});
+    if (patch && patch.view) out.view = Object.assign({}, base && base.view || {}, patch.view);
+    return out;
+  }
+  function receive(value) {
+    if (broadcastState && value.version < broadcastState.version) return;
+    broadcastState = value;
+    if (ROLE !== 'preview' || value.follow) previewPatch = null;
+    state = previewPatch && !value.follow ? merge(value, previewPatch) : value;
+    maintainedVersion = -1;
+    renderHud(true);
+  }
   function connect() {
     var source = new EventSource('/api/events');
     source.onmessage = function (event) {
-      state = JSON.parse(event.data);
-      maintainedVersion = -1;
-      renderHud(true);
+      receive(JSON.parse(event.data));
     };
   }
   fetch('/api/catalog').then(function (r) { return r.json(); }).then(function (data) { catalog = data; });
@@ -313,6 +324,19 @@
 
   // Same-origin helpers for the console.
   window.gx = {
+    prepare: function (patch) {
+      if (ROLE !== 'preview' || !broadcastState) return;
+      previewPatch = merge(previewPatch, patch);
+      if (patch.camera) previewPatch.camera = Object.assign({}, patch.camera, { serial: --previewSerial });
+      state = merge(broadcastState, previewPatch);
+      maintainedVersion = -1;
+      renderHud(true);
+    },
+    clearPreview: function (value) {
+      previewPatch = null;
+      if (value) receive(value);
+      else if (broadcastState) receive(broadcastState);
+    },
     camera: function () { return engine ? currentCamera() : null; },
     altitude: function (id) {
       if (!engine || !state) return null;
@@ -326,6 +350,11 @@
     },
     ready: function () { return revealed; },
     go: function (camera) { cam.pending = camera; cam.tries = 0; },
+    takeState: function () {
+      var camera = this.take();
+      if (!camera) return null;
+      return merge(previewPatch, { camera: camera });
+    },
     take: function () {
       if (!engine) return null;
       if (staged) return Object.assign({}, staged);
